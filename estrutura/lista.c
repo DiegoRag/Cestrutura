@@ -1,145 +1,149 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "lista.h"
 
-/*
- * Implementacao PROVISORIA da fila com prioridade do MediCore.
- *
- * Estrutura: lista duplamente ligada adaptada como fila.
- *
- * A fila e mantida ordenada por prioridade no momento da insercao:
- *   EMERGENCIA (1)  >  PREFERENCIAL (2)  >  COMUM (3)
- *
- * Dentro da mesma prioridade vale FIFO (quem chegou primeiro
- * fica mais perto da frente). Assim, `desenfileirar` apenas
- * remove o no de `inicio` e ja entrega o paciente correto.
- */
 
-void inicializarFila(Fila *fila) {
-    fila->inicio = NULL;
-    fila->fim = NULL;
-    fila->tamanho = 0;
+
+/* Definindo a estrutura do Nó base */
+typedef struct No{
+
+    char nome[50]; /* Vetor de caracteres para nome */
+
+    int prioridade; /* 1: Alta, 2: Média, 3: Baixa */
+
+    struct No* prox; /* Armazena o endereço do próximo nó */
+    struct No* ant; /* Armazena o endereço do nó anterior*/
+
+}No; /* Nomeia a estrutura base como "No" */
+
+
+
+/* Definindo a estrutura da Fila */
+typedef struct {
+
+    No* inicio; /* Ponteiro que aponta para primeiro elemento */
+    No* fim; /* Ponteiro que aponta para o último elemento */
+
+}Fila; /* Nomeia a estrutura como Fila */
+
+
+
+/* Iniciar uma lista vazia */
+void iniciarFila(Fila* f){
+    /* Garante que não haja lixo de memória */
+    f -> inicio = NULL;
+    f -> fim = NULL;
 }
 
-int filaVazia(Fila *fila) {
-    return fila->inicio == NULL;
-}
 
-int tamanhoFila(Fila *fila) {
-    return fila->tamanho;
-}
 
-void enfileirar(Fila *fila, Paciente paciente) {
-    No *novo = (No *) malloc(sizeof(No));
-    if (novo == NULL) {
+/* Insere um novo elemento no final da fila */
+void enqueue(Fila* f, const char* info, int prioridade){
+
+    No* novo = (No*)malloc(sizeof(No)); /* Aloca dinamicamente um bloco de memória do tamanho da estrutura */
+
+    if(novo == NULL) return; /* Prevenção contra estouro de memória */
+
+    strcpy(novo -> nome, info); /* Armazena a informação "info" na variável nome do novo nó */
+
+    novo -> prioridade = prioridade; /* Atribui o índice de prioridade */
+
+    novo -> prox = NULL; /* "prox", do novo nó, aponta para nenhum endereço, já que não há ningúem depois do último da fila */
+
+
+    /* Se lista vazia */
+    if (f -> inicio == NULL) {
+
+        f -> inicio = novo; /* Se a fila tiver vazia o novo nó também será o início da fila */
+
+        f -> fim = novo; /* Valor do fim da fila se torna o novo nó */
+
+        printf("[Fila] Inserido: %s (Prioridade: %d)\n", novo->nome, novo->prioridade);
+
         return;
     }
-    novo->paciente = paciente;
-    novo->anterior = NULL;
-    novo->proximo = NULL;
 
-    if (fila->inicio == NULL) {
-        fila->inicio = novo;
-        fila->fim = novo;
-        fila->tamanho++;
-        return;
+
+
+    /* Percorre a lista a partir do início da lista */
+    No* atual = f -> inicio;
+    /* Enquanto houver elemento na fila e a prioridade for menor que o elemento atual */
+    while (atual != NULL && atual -> prioridade <= prioridade) {
+        atual = atual -> prox; /* Anda para o próximo elemento */
     }
 
-    /*
-     * Procura o primeiro no com prioridade ESTRITAMENTE menor
-     * (numero maior) que a do novo paciente. O `<=` garante que,
-     * em caso de empate de prioridade, o recem-chegado entra
-     * depois dos que ja estavam la (FIFO dentro do grupo).
-     */
-    No *atual = fila->inicio;
-    while (atual != NULL && atual->paciente.prioridade <= paciente.prioridade) {
-        atual = atual->proximo;
-    }
 
+
+    /* Inserir no final - Se percorrer tudo e o atual ficou NULL */
     if (atual == NULL) {
-        /* Insere no fim. */
-        novo->anterior = fila->fim;
-        fila->fim->proximo = novo;
-        fila->fim = novo;
-    } else if (atual == fila->inicio) {
-        /* Insere antes do primeiro (nova maior prioridade). */
-        novo->proximo = fila->inicio;
-        fila->inicio->anterior = novo;
-        fila->inicio = novo;
-    } else {
-        /* Insere entre dois nos existentes. */
-        novo->anterior = atual->anterior;
-        novo->proximo = atual;
-        atual->anterior->proximo = novo;
-        atual->anterior = novo;
+
+        novo -> ant = f -> fim; /* O ponteiro "anterior" do novo nó recebe o endereço do atual último elemento da fila */
+
+        f -> fim -> prox = novo; /* O ponteiro "próximo" do antigo último elemento passa a apontar para o novo nó */
+
+        f -> fim = novo; /* O ponteiro principal que marca o fim da estrutura da fila é atualizado para ser o novo nó */
+
+        printf("[Fila] Inserido: %s (Prioridade: %d)\n", novo->nome, novo->prioridade);
     }
 
-    fila->tamanho++;
+
+
+    /* Inserir no início - O primeiro da fila já tem prioridade menor do que o novo */
+    else if (atual == f -> inicio) {
+
+        novo -> prox = f -> inicio; /* O ponteiro "próximo" do novo nó aponta para quem era o primeiro da fila */
+
+        f -> inicio -> ant = novo; /* O ponteiro "anterior" do antigo primeiro da fila passa a apontar para o novo nó */
+
+        novo -> ant = NULL; /* Garante que o novo primeiro não tem ninguém atrás dele */
+
+        f -> inicio = novo; /* O ponteiro principal que marca o início da estrutura da fila é atualizado para ser o novo nó */
+
+        printf("[Fila] Inserido: %s (Prioridade: %d)\n", novo->nome, novo->prioridade);
+    }
+
+
+
+    /* Inserir no meio - O novo nó vai entrar exatamente antes do nó "atual" */
+    else {
+
+        novo -> prox = atual; /* O novo nó se conecta ao nó da frente, "atual", através de "prox" */
+
+        novo -> ant = atual -> ant; /* O novo nó se conecta ao nó de trás, que era quem vinha antes do "atual" */
+
+        atual -> ant -> prox = novo; /* O nó de trás se conecta ao novo nó também, reconhecendo ele como seu "prox" */
+
+        atual -> ant = novo; /* O nó da frente, "atual", se conecta ao novo nó, reconhecendo ele como seu "ant" */
+
+        printf("[Fila] Inserido: %s (Prioridade: %d)\n", novo->nome, novo->prioridade);
+    }
 }
 
-int desenfileirar(Fila *fila, Paciente *removido) {
-    if (fila->inicio == NULL) {
-        return 0;
+
+
+/* Remove o primeiro elemento da fila */
+void dequeue(Fila* f){
+
+    /* Se a lista estiver vazia não existe elementos para serem removidos */
+    if(f -> inicio == NULL){
+        printf("[Fila] Erro: Fila vazia!\n");
+        return;
     }
 
-    No *no = fila->inicio;
-    if (removido != NULL) {
-        *removido = no->paciente;
+
+    No* removido = f -> inicio; /* Armazena endereço do primeiro elemento da fila em "removido", auxiliar */
+
+    f -> inicio = removido -> prox; /* Inicio da fila se torna o segundo elemento, novo primeiro elemento */
+
+
+    if(f -> inicio != NULL){
+        f -> inicio -> ant =  NULL; /* Novo primeiro elemento não deve ter ninguém a sua frente */
+    } else{
+        f -> fim = NULL; /* Se não houver mais elementos na fila, o fim deve apontar para ninguém */
     }
 
-    fila->inicio = no->proximo;
-    if (fila->inicio != NULL) {
-        fila->inicio->anterior = NULL;
-    } else {
-        fila->fim = NULL;
-    }
+    printf("[Fila] Removido: %s \n", removido -> nome);
 
-    free(no);
-    fila->tamanho--;
-    return 1;
-}
+    free(removido); /* Limpa memória - Remove elemento da fila */
 
-int frenteFila(Fila *fila, Paciente *atual) {
-    if (fila->inicio == NULL) {
-        return 0;
-    }
-    if (atual != NULL) {
-        *atual = fila->inicio->paciente;
-    }
-    return 1;
-}
-
-void liberarFila(Fila *fila) {
-    No *atual = fila->inicio;
-    while (atual != NULL) {
-        No *prox = atual->proximo;
-        free(atual);
-        atual = prox;
-    }
-    fila->inicio = NULL;
-    fila->fim = NULL;
-    fila->tamanho = 0;
-}
-
-void listarFila(Fila *fila) {
-    No *atual = fila->inicio;
-    int posicao = 1;
-
-    while (atual != NULL) {
-        const char *prio;
-        switch (atual->paciente.prioridade) {
-            case PRIORIDADE_EMERGENCIA:   prio = "EMERGENCIA";   break;
-            case PRIORIDADE_PREFERENCIAL: prio = "PREFERENCIAL"; break;
-            case PRIORIDADE_COMUM:        prio = "COMUM";        break;
-            default:                      prio = "DESCONHECIDA"; break;
-        }
-        printf("    %02d. Senha %04d  |  %-25s  |  %s\n",
-               posicao,
-               atual->paciente.senha,
-               atual->paciente.nome,
-               prio);
-        atual = atual->proximo;
-        posicao++;
-    }
 }

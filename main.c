@@ -7,6 +7,7 @@
 #define FILA_W 32
 #define MAX_LINHAS_FILA 16
 #define INDENT "  "
+#define NOME_RAW_MAX 44
 
 typedef struct {
     char texto[FILA_W + 1];
@@ -52,6 +53,40 @@ static const char* nomePrioridade(int prioridade) {
         case PRIORIDADE_PREFERENCIAL: return "PREFERENCIAL";
         case PRIORIDADE_COMUM:        return "COMUM";
         default:                      return "DESCONHECIDA";
+    }
+}
+
+static int filaVazia(Fila *fila) {
+    return fila->inicio == NULL;
+}
+
+static int tamanhoFila(Fila *fila) {
+    int n = 0;
+    for (No *atual = fila->inicio; atual != NULL; atual = atual->prox) {
+        n++;
+    }
+    return n;
+}
+
+static void liberarFila(Fila *fila) {
+    while (fila->inicio != NULL) {
+        No *n = fila->inicio;
+        fila->inicio = n->prox;
+        free(n);
+    }
+    fila->fim = NULL;
+}
+
+static void listarFila(Fila *fila) {
+    No *atual = fila->inicio;
+    int posicao = 1;
+    while (atual != NULL) {
+        printf("    %02d. %-35s  |  %s\n",
+               posicao,
+               atual->nome,
+               nomePrioridade(atual->prioridade));
+        atual = atual->prox;
+        posicao++;
     }
 }
 
@@ -106,7 +141,7 @@ static int montarLinhasFila(Fila *fila, LinhaFila *linhas, int max) {
     No *atual = fila->inicio;
 
     while (atual != NULL && count < max - 1) {
-        int p = atual->paciente.prioridade;
+        int p = atual->prioridade;
         if (p != prevPrior) {
             snprintf(linhas[count++].texto, FILA_W + 1,
                      "-- %s --", nomePrioridade(p));
@@ -114,17 +149,15 @@ static int montarLinhasFila(Fila *fila, LinhaFila *linhas, int max) {
             if (count >= max - 1) break;
         }
         snprintf(linhas[count++].texto, FILA_W + 1,
-                 " %c%04d  %.*s",
-                 prefixoPrioridade(p),
-                 atual->paciente.senha,
-                 FILA_W - 8,
-                 atual->paciente.nome);
-        atual = atual->proximo;
+                 " %.*s",
+                 FILA_W - 2,
+                 atual->nome);
+        atual = atual->prox;
     }
 
     if (atual != NULL) {
         int remaining = 0;
-        for (No *n = atual; n != NULL; n = n->proximo) remaining++;
+        for (No *n = atual; n != NULL; n = n->prox) remaining++;
         snprintf(linhas[count++].texto, FILA_W + 1,
                  "... +%d aguardando", remaining);
     }
@@ -183,7 +216,9 @@ static void menuPrioridade(void) {
 
 static void retirarSenha(Fila *fila, int *contadorSenha) {
     int opcao = -1;
-    Paciente novo;
+    int prioridade;
+    char nomeRaw[NOME_RAW_MAX];
+    char nomeCompleto[50];
 
     limparTela();
     menuPrioridade();
@@ -196,9 +231,9 @@ static void retirarSenha(Fila *fila, int *contadorSenha) {
     while (getchar() != '\n') { }
 
     switch (opcao) {
-        case 1: novo.prioridade = PRIORIDADE_EMERGENCIA;   break;
-        case 2: novo.prioridade = PRIORIDADE_PREFERENCIAL; break;
-        case 3: novo.prioridade = PRIORIDADE_COMUM;        break;
+        case 1: prioridade = PRIORIDADE_EMERGENCIA;   break;
+        case 2: prioridade = PRIORIDADE_PREFERENCIAL; break;
+        case 3: prioridade = PRIORIDADE_COMUM;        break;
         case 0:
             printf("\n%sOperacao cancelada.\n", INDENT);
             pausar();
@@ -212,60 +247,75 @@ static void retirarSenha(Fila *fila, int *contadorSenha) {
     limparTela();
     cabecalho();
     printf("\n%sInforme o nome do paciente: ", INDENT);
-    lerLinha(novo.nome, sizeof(novo.nome));
-    if (novo.nome[0] == '\0') {
-        strcpy(novo.nome, "Paciente sem identificacao");
+    lerLinha(nomeRaw, sizeof(nomeRaw));
+    if (nomeRaw[0] == '\0') {
+        strcpy(nomeRaw, "Paciente s/ ident.");
     }
 
-    novo.senha = ++(*contadorSenha);
-    enfileirar(fila, novo);
+    int senha = ++(*contadorSenha);
+    snprintf(nomeCompleto, sizeof(nomeCompleto),
+             "%c%04d %s",
+             prefixoPrioridade(prioridade),
+             senha,
+             nomeRaw);
+
+    printf("\n");
+    enqueue(fila, nomeCompleto, prioridade);
 
     printf("\n%s+--------------------------------------------------+\n", INDENT);
     printf("%s|           SENHA GERADA COM SUCESSO               |\n", INDENT);
     printf("%s+--------------------------------------------------+\n", INDENT);
-    printf("%s   Senha       : %c%04d\n", INDENT, prefixoPrioridade(novo.prioridade), novo.senha);
-    printf("%s   Paciente    : %s\n", INDENT, novo.nome);
-    printf("%s   Prioridade  : %s\n", INDENT, nomePrioridade(novo.prioridade));
+    printf("%s   Senha       : %c%04d\n", INDENT, prefixoPrioridade(prioridade), senha);
+    printf("%s   Paciente    : %s\n", INDENT, nomeRaw);
+    printf("%s   Prioridade  : %s\n", INDENT, nomePrioridade(prioridade));
     printf("%s+--------------------------------------------------+\n", INDENT);
     pausar();
 }
 
 static void chamarProximo(Fila *fila) {
-    Paciente atendido;
     limparTela();
     cabecalho();
 
-    if (desenfileirar(fila, &atendido)) {
-        printf("\n%s+--------------------------------------------------+\n", INDENT);
-        printf("%s|           CHAMANDO PROXIMO PACIENTE              |\n", INDENT);
-        printf("%s+--------------------------------------------------+\n", INDENT);
-        printf("%s   Senha       : %c%04d\n", INDENT, prefixoPrioridade(atendido.prioridade), atendido.senha);
-        printf("%s   Paciente    : %s\n", INDENT, atendido.nome);
-        printf("%s   Prioridade  : %s\n", INDENT, nomePrioridade(atendido.prioridade));
-        printf("%s+--------------------------------------------------+\n", INDENT);
-        printf("\n%s>> Dirija-se ao consultorio indicado.\n", INDENT);
-    } else {
+    if (filaVazia(fila)) {
         printf("\n%s[i] Nao ha pacientes aguardando no momento.\n", INDENT);
+        pausar();
+        return;
     }
+
+    char nomeSalvo[50];
+    int prioridadeSalva;
+    strcpy(nomeSalvo, fila->inicio->nome);
+    prioridadeSalva = fila->inicio->prioridade;
+
+    printf("\n");
+    dequeue(fila);
+
+    printf("\n%s+--------------------------------------------------+\n", INDENT);
+    printf("%s|           CHAMANDO PROXIMO PACIENTE              |\n", INDENT);
+    printf("%s+--------------------------------------------------+\n", INDENT);
+    printf("%s   Identificacao : %s\n", INDENT, nomeSalvo);
+    printf("%s   Prioridade    : %s\n", INDENT, nomePrioridade(prioridadeSalva));
+    printf("%s+--------------------------------------------------+\n", INDENT);
+    printf("\n%s>> Dirija-se ao consultorio indicado.\n", INDENT);
     pausar();
 }
 
 static void verFrente(Fila *fila) {
-    Paciente atual;
     limparTela();
     cabecalho();
 
-    if (frenteFila(fila, &atual)) {
-        printf("\n%s+--------------------------------------------------+\n", INDENT);
-        printf("%s|             PROXIMO A SER CHAMADO                |\n", INDENT);
-        printf("%s+--------------------------------------------------+\n", INDENT);
-        printf("%s   Senha       : %c%04d\n", INDENT, prefixoPrioridade(atual.prioridade), atual.senha);
-        printf("%s   Paciente    : %s\n", INDENT, atual.nome);
-        printf("%s   Prioridade  : %s\n", INDENT, nomePrioridade(atual.prioridade));
-        printf("%s+--------------------------------------------------+\n", INDENT);
-    } else {
+    if (filaVazia(fila)) {
         printf("\n%s[i] A fila esta vazia.\n", INDENT);
+        pausar();
+        return;
     }
+
+    printf("\n%s+--------------------------------------------------+\n", INDENT);
+    printf("%s|             PROXIMO A SER CHAMADO                |\n", INDENT);
+    printf("%s+--------------------------------------------------+\n", INDENT);
+    printf("%s   Identificacao : %s\n", INDENT, fila->inicio->nome);
+    printf("%s   Prioridade    : %s\n", INDENT, nomePrioridade(fila->inicio->prioridade));
+    printf("%s+--------------------------------------------------+\n", INDENT);
     pausar();
 }
 
@@ -305,7 +355,7 @@ int main(void) {
     int contadorSenha = 0;
     int opcao = -1;
 
-    inicializarFila(&fila);
+    iniciarFila(&fila);
 
     do {
         limparTela();
