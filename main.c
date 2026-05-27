@@ -114,9 +114,10 @@ static int montarLinhasFila(Fila *fila, LinhaFila *linhas, int max) {
             if (count >= max - 1) break;
         }
         snprintf(linhas[count++].texto, FILA_W + 1,
-                 " %c%04d  %s",
+                 " %c%04d  %.*s",
                  prefixoPrioridade(p),
                  atual->paciente.senha,
+                 FILA_W - 8,
                  atual->paciente.nome);
         atual = atual->proximo;
     }
