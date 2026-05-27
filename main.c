@@ -7,7 +7,6 @@
 #define FILA_W 32
 #define MAX_LINHAS_FILA 16
 #define INDENT "  "
-#define NOME_RAW_MAX 44
 
 typedef struct {
     char texto[FILA_W + 1];
@@ -35,15 +34,6 @@ static void lerLinha(char *destino, int tamanho) {
         }
     } else {
         destino[0] = '\0';
-    }
-}
-
-static char prefixoPrioridade(int p) {
-    switch (p) {
-        case PRIORIDADE_EMERGENCIA:   return 'E';
-        case PRIORIDADE_PREFERENCIAL: return 'P';
-        case PRIORIDADE_COMUM:        return 'C';
-        default:                      return '?';
     }
 }
 
@@ -81,7 +71,7 @@ static void listarFila(Fila *fila) {
     No *atual = fila->inicio;
     int posicao = 1;
     while (atual != NULL) {
-        printf("    %02d. %-35s  |  %s\n",
+        printf("    %02d. %-30s  |  %s\n",
                posicao,
                atual->nome,
                nomePrioridade(atual->prioridade));
@@ -132,7 +122,7 @@ static void cabecalho(void) {
 
 static int montarLinhasFila(Fila *fila, LinhaFila *linhas, int max) {
     if (filaVazia(fila)) {
-        snprintf(linhas[0].texto, FILA_W + 1, "Nenhuma senha cadastrada");
+        snprintf(linhas[0].texto, FILA_W + 1, "Nenhum paciente cadastrado");
         return 1;
     }
 
@@ -149,8 +139,8 @@ static int montarLinhasFila(Fila *fila, LinhaFila *linhas, int max) {
             if (count >= max - 1) break;
         }
         snprintf(linhas[count++].texto, FILA_W + 1,
-                 " %.*s",
-                 FILA_W - 2,
+                 "  %.*s",
+                 FILA_W - 3,
                  atual->nome);
         atual = atual->prox;
     }
@@ -167,7 +157,7 @@ static int montarLinhasFila(Fila *fila, LinhaFila *linhas, int max) {
 
 static void menuPrincipal(Fila *fila) {
     const char *menuLinhas[] = {
-        "[1] Retirar senha de atendimento",
+        "[1] Cadastrar entrada na fila",
         "[2] Chamar proximo paciente",
         "[3] Visualizar paciente da frente",
         "[4] Visualizar fila completa",
@@ -187,7 +177,7 @@ static void menuPrincipal(Fila *fila) {
     linhaCentralizada("Centro Clinico");
     linhaCentralizada("");
     bordaDividida('=');
-    linhaDupla("MENU DE ATENDIMENTO", "SENHAS NA FILA");
+    linhaDupla("MENU DE ATENDIMENTO", "PACIENTES NA FILA");
     bordaDividida('-');
 
     int rows = (menuCount > filaCount) ? menuCount : filaCount;
@@ -214,11 +204,10 @@ static void menuPrioridade(void) {
     printf("\n%s>> Selecione a prioridade: ", INDENT);
 }
 
-static void retirarSenha(Fila *fila, int *contadorSenha) {
+static void cadastrarPaciente(Fila *fila) {
     int opcao = -1;
     int prioridade;
-    char nomeRaw[NOME_RAW_MAX];
-    char nomeCompleto[50];
+    char nome[50];
 
     limparTela();
     menuPrioridade();
@@ -247,26 +236,17 @@ static void retirarSenha(Fila *fila, int *contadorSenha) {
     limparTela();
     cabecalho();
     printf("\n%sInforme o nome do paciente: ", INDENT);
-    lerLinha(nomeRaw, sizeof(nomeRaw));
-    if (nomeRaw[0] == '\0') {
-        strcpy(nomeRaw, "Paciente s/ ident.");
+    lerLinha(nome, sizeof(nome));
+    if (nome[0] == '\0') {
+        strcpy(nome, "Paciente sem identificacao");
     }
 
-    int senha = ++(*contadorSenha);
-    snprintf(nomeCompleto, sizeof(nomeCompleto),
-             "%c%04d %s",
-             prefixoPrioridade(prioridade),
-             senha,
-             nomeRaw);
-
-    printf("\n");
-    enqueue(fila, nomeCompleto, prioridade);
+    enqueue(fila, nome, prioridade);
 
     printf("\n%s+--------------------------------------------------+\n", INDENT);
-    printf("%s|           SENHA GERADA COM SUCESSO               |\n", INDENT);
+    printf("%s|           PACIENTE CADASTRADO                    |\n", INDENT);
     printf("%s+--------------------------------------------------+\n", INDENT);
-    printf("%s   Senha       : %c%04d\n", INDENT, prefixoPrioridade(prioridade), senha);
-    printf("%s   Paciente    : %s\n", INDENT, nomeRaw);
+    printf("%s   Paciente    : %s\n", INDENT, nome);
     printf("%s   Prioridade  : %s\n", INDENT, nomePrioridade(prioridade));
     printf("%s+--------------------------------------------------+\n", INDENT);
     pausar();
@@ -287,14 +267,13 @@ static void chamarProximo(Fila *fila) {
     strcpy(nomeSalvo, fila->inicio->nome);
     prioridadeSalva = fila->inicio->prioridade;
 
-    printf("\n");
     dequeue(fila);
 
     printf("\n%s+--------------------------------------------------+\n", INDENT);
     printf("%s|           CHAMANDO PROXIMO PACIENTE              |\n", INDENT);
     printf("%s+--------------------------------------------------+\n", INDENT);
-    printf("%s   Identificacao : %s\n", INDENT, nomeSalvo);
-    printf("%s   Prioridade    : %s\n", INDENT, nomePrioridade(prioridadeSalva));
+    printf("%s   Paciente    : %s\n", INDENT, nomeSalvo);
+    printf("%s   Prioridade  : %s\n", INDENT, nomePrioridade(prioridadeSalva));
     printf("%s+--------------------------------------------------+\n", INDENT);
     printf("\n%s>> Dirija-se ao consultorio indicado.\n", INDENT);
     pausar();
@@ -313,8 +292,8 @@ static void verFrente(Fila *fila) {
     printf("\n%s+--------------------------------------------------+\n", INDENT);
     printf("%s|             PROXIMO A SER CHAMADO                |\n", INDENT);
     printf("%s+--------------------------------------------------+\n", INDENT);
-    printf("%s   Identificacao : %s\n", INDENT, fila->inicio->nome);
-    printf("%s   Prioridade    : %s\n", INDENT, nomePrioridade(fila->inicio->prioridade));
+    printf("%s   Paciente    : %s\n", INDENT, fila->inicio->nome);
+    printf("%s   Prioridade  : %s\n", INDENT, nomePrioridade(fila->inicio->prioridade));
     printf("%s+--------------------------------------------------+\n", INDENT);
     pausar();
 }
@@ -352,7 +331,6 @@ static void verificarVazia(Fila *fila) {
 
 int main(void) {
     Fila fila;
-    int contadorSenha = 0;
     int opcao = -1;
 
     iniciarFila(&fila);
@@ -370,12 +348,12 @@ int main(void) {
         while (getchar() != '\n') { }
 
         switch (opcao) {
-            case 1: retirarSenha(&fila, &contadorSenha); break;
-            case 2: chamarProximo(&fila);                break;
-            case 3: verFrente(&fila);                    break;
-            case 4: verFilaCompleta(&fila);              break;
-            case 5: verTamanho(&fila);                   break;
-            case 6: verificarVazia(&fila);               break;
+            case 1: cadastrarPaciente(&fila); break;
+            case 2: chamarProximo(&fila);     break;
+            case 3: verFrente(&fila);         break;
+            case 4: verFilaCompleta(&fila);   break;
+            case 5: verTamanho(&fila);        break;
+            case 6: verificarVazia(&fila);    break;
             case 0:
                 limparTela();
                 cabecalho();

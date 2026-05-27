@@ -58,8 +58,6 @@ void enqueue(Fila* f, const char* info, int prioridade){
 
         f -> fim = novo; /* Valor do fim da fila se torna o novo nó */
 
-        printf("[Fila] Inserido: %s (Prioridade: %d)\n", novo->nome, novo->prioridade);
-
         return;
     }
 
@@ -82,8 +80,6 @@ void enqueue(Fila* f, const char* info, int prioridade){
         f -> fim -> prox = novo; /* O ponteiro "próximo" do antigo último elemento passa a apontar para o novo nó */
 
         f -> fim = novo; /* O ponteiro principal que marca o fim da estrutura da fila é atualizado para ser o novo nó */
-
-        printf("[Fila] Inserido: %s (Prioridade: %d)\n", novo->nome, novo->prioridade);
     }
 
 
@@ -98,8 +94,6 @@ void enqueue(Fila* f, const char* info, int prioridade){
         novo -> ant = NULL; /* Garante que o novo primeiro não tem ninguém atrás dele */
 
         f -> inicio = novo; /* O ponteiro principal que marca o início da estrutura da fila é atualizado para ser o novo nó */
-
-        printf("[Fila] Inserido: %s (Prioridade: %d)\n", novo->nome, novo->prioridade);
     }
 
 
@@ -114,8 +108,6 @@ void enqueue(Fila* f, const char* info, int prioridade){
         atual -> ant -> prox = novo; /* O nó de trás se conecta ao novo nó também, reconhecendo ele como seu "prox" */
 
         atual -> ant = novo; /* O nó da frente, "atual", se conecta ao novo nó, reconhecendo ele como seu "ant" */
-
-        printf("[Fila] Inserido: %s (Prioridade: %d)\n", novo->nome, novo->prioridade);
     }
 }
 
@@ -126,7 +118,6 @@ void dequeue(Fila* f){
 
     /* Se a lista estiver vazia não existe elementos para serem removidos */
     if(f -> inicio == NULL){
-        printf("[Fila] Erro: Fila vazia!\n");
         return;
     }
 
@@ -141,8 +132,6 @@ void dequeue(Fila* f){
     } else{
         f -> fim = NULL; /* Se não houver mais elementos na fila, o fim deve apontar para ninguém */
     }
-
-    printf("[Fila] Removido: %s \n", removido -> nome);
 
     free(removido); /* Limpa memória - Remove elemento da fila */
 
