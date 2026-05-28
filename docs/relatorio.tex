@@ -1,0 +1,193 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{setspace}
+\usepackage{geometry}
+\usepackage{titlesec}
+\usepackage{graphicx}
+\usepackage{float}
+
+% Configuração das margens
+\geometry{left=30mm, top=30mm, right=20mm, bottom=20mm}
+
+\renewcommand{\contentsname}{Sumário}
+
+\titleformat{\section}{\fontsize{14pt}{17pt}\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\fontsize{12pt}{14pt}\bfseries}{\thesubsection}{1em}{}
+
+\singlespacing
+
+\begin{document}
+
+\begin{titlepage}
+    \begin{center}
+        \fontsize{12pt}{14pt}\selectfont
+        \textbf{CENTRO UNIVERSITÁRIO SENAC}\\
+        \vspace{4.5cm}
+
+        \fontsize{14pt}{17pt}\selectfont
+        \textbf{MedCore Centro Clínico}\\
+        Sistema de Gerenciamento de Filas por Prioridade\\
+        \vspace{1.5cm}
+
+        \fontsize{12pt}{14pt}\selectfont
+        \textbf{Tema: Simulador de Atendimento Hospitalar}\\
+        \vspace{4.5cm}
+
+        \vspace{0.5cm}
+        Diego Ragozini Silva\\
+        Gustavo Germiniani\\
+        Henrique Macedo de Souza\\
+        Henrique Prado Carvalho de Sá Lima\\
+        João Henrique Ferreira\\
+        Nathaly Vieira Costa\\
+
+        \vfill
+
+        \textbf{São Paulo}\\
+        \textbf{2026}
+    \end{center}
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Objetivo}
+\label{sec:objetivo}
+O trabalho final da disciplina de Estrutura de Dados tem como propósito descrever o desenvolvimento de um simulador de atendimento hospitalar implementado em linguagem C. A solução proposta, denominada \textit{MediCore Centro Clínico}, aplica conceitos fundamentais de estruturas de dados, especificamente o de Fila adaptada a partir de Lista Duplamente Encadeada, para gerenciar o fluxo de pacientes em um totem de recepção e triagem, emulando a rotina de atendimento em um ambiente clínico estruturado.
+
+\subsection{Problema a ser resolvido}
+O escopo central do projeto consiste em solucionar os gargalos na gestão de fluxo e na ordem de chamada em prontos-socorros. Uma vez que a chegada de pacientes ocorre de forma imprevisível, o atendimento estritamente sequencial (ordem de chegada) torna-se inviável para o contexto hospitalar. Faz-se necessário, portanto, um sistema capaz de emular a entrada dessas requisições e aplicar regras de negócio rigorosas para a ordenação, mitigando o risco de pacientes em estado crítico aguardarem atendimento de forma inadequada.
+
+\subsection{Finalidade do projeto}
+A aplicação tem como finalidade automatizar e organizar o processo de triagem no momento da recepção. O sistema visa garantir equidade e segurança operacional ao classificar as entradas em três categorias de criticidade alinhadas ao cenário médico brasileiro: \textbf{Emergência} (atendimento imediato), \textbf{Preferencial} (idosos, gestantes, PCD e crianças) e \textbf{Comum} (consultas em geral). Dessa forma, a solução assegura que a fila de espera reflita com exatidão o grau de urgência clínica de cada indivíduo registrado, sem perder a ordem de chegada dentro de uma mesma criticidade.
+
+\subsection{Funcionalidade geral da aplicação}
+O sistema atua como um painel de gerenciamento estilo totem hospitalar, exibido diretamente no terminal por meio de uma interface textual estruturada em duas colunas. À esquerda apresenta-se o menu de operações disponíveis, enquanto à direita é renderizado em tempo real o painel de pacientes na fila, agrupados por nível de prioridade. O módulo de entrada permite o cadastro de uma nova ficha, capturando o nome do paciente e seu nível de prioridade clínica. Em seguida, o algoritmo realiza a alocação dinâmica deste registro na estrutura de dados subjacente. Ao acionar o comando de chamada, o sistema extrai e retorna automaticamente a ficha de maior precedência, garantindo o respeito estrito à hierarquia de criticidades preestabelecida.
+
+
+\section{Estrutura de Dados Utilizada}
+\label{sec:estrutura_dados}
+A arquitetura da solução exigiu a seleção de estruturas de armazenamento em memória que oferecessem alta escalabilidade e flexibilidade. Considerando a impossibilidade de prever a volumetria exata de atendimentos diários, descartou-se o uso de arranjos estáticos (vetores) em favor da alocação dinâmica de memória por meio de ponteiros, garantindo crescimento sob demanda da fila de pacientes.
+
+\subsection{Fila Adaptada a partir de Lista Duplamente Encadeada}
+O comportamento base do sistema fundamenta-se no princípio \textit{FIFO} (\textit{First In, First Out}). No entanto, a exigência de lidar com prioridades variáveis e manipulação de nós em posições intermediárias motivou a adaptação arquitetural da fila sobre a base de uma Lista Duplamente Encadeada. A utilização de ponteiros duplos --- representados pelos campos \texttt{prox} (próximo nó) e \texttt{ant} (nó anterior) na estrutura \texttt{No} --- confere bidirecionalidade à travessia da estrutura, otimizando o custo computacional durante as inserções ordenadas sem comprometer a integridade do encadeamento.
+
+A estrutura \texttt{No} armazena os atributos essenciais de cada paciente cadastrado: um vetor de caracteres \texttt{nome[50]} contendo a identificação textual e um inteiro \texttt{prioridade} que assume os valores 1 (Emergência), 2 (Preferencial) ou 3 (Comum). Adicionalmente, uma estrutura de controle \texttt{Fila} mantém referências aos ponteiros de \texttt{inicio} e \texttt{fim}, permitindo acesso constante (\textit{O(1)}) às extremidades da estrutura sem a necessidade de percorrê-la integralmente.
+
+\subsection{Como a estrutura foi adaptada para prioridades}
+A principal modificação estrutural concentrou-se no algoritmo de inserção (\texttt{enqueue}). Em uma fila convencional, o enfileiramento ocorre exclusivamente na cauda (\textit{tail}). No simulador desenvolvido, o algoritmo executa uma varredura (\textit{traversal}) a partir do início da fila utilizando um ponteiro auxiliar \texttt{atual}, avançando enquanto a condição \texttt{atual->prioridade <= prioridade do novo} for verdadeira. A presença do operador de igualdade nesta condição é crucial: garante que, em caso de empate de prioridade, o paciente recém-chegado seja inserido \textit{após} os demais pacientes do mesmo nível, preservando assim o critério FIFO dentro de cada grupo de criticidade.
+
+Após a varredura, o algoritmo identifica uma de quatro situações possíveis para realizar a inserção:
+\begin{itemize}
+    \item \textbf{Fila vazia:} o novo nó torna-se simultaneamente \texttt{inicio} e \texttt{fim} da estrutura.
+    \item \textbf{Inserção no fim:} ocorre quando o paciente possui a pior prioridade entre os já enfileirados; o nó é encadeado após o atual \texttt{fim}.
+    \item \textbf{Inserção no início:} ocorre quando o paciente possui prioridade superior a todos os existentes; o nó torna-se o novo \texttt{inicio}.
+    \item \textbf{Inserção no meio:} ocorre quando o paciente possui prioridade intermediária; o nó é encaixado entre dois nós existentes, exigindo o ajuste de quatro ponteiros para preservar a bidirecionalidade do encadeamento.
+\end{itemize}
+
+A operação de remoção (\texttt{dequeue}) preserva sua característica assintótica padrão, ocorrendo invariavelmente pela cabeça (\textit{head}) da lista em tempo constante. Como o algoritmo de inserção já mantém a fila intrinsecamente ordenada, a chamada ao próximo paciente reduz-se a uma simples extração do nó apontado por \texttt{inicio}, seguida pela liberação da memória ocupada via \texttt{free()}.
+
+\subsection{Operações principais}
+Em conformidade com o requisito acadêmico que exige a implementação das cinco operações fundamentais de fila, o sistema disponibiliza as seguintes rotinas:
+\begin{itemize}
+    \item \textbf{Iniciar Fila (\texttt{iniciarFila}):} Atribui valores nulos aos ponteiros \texttt{inicio} e \texttt{fim}, preparando a estrutura para receber inserções e prevenindo o acesso a regiões indefinidas de memória.
+    \item \textbf{Enfileirar (\texttt{enqueue}):} Recebe o nome e a prioridade do paciente, aloca dinamicamente um novo nó na \textit{heap} via \texttt{malloc} e manipula de forma controlada os ponteiros \texttt{prox} e \texttt{ant} para posicioná-lo no segmento correspondente à sua criticidade.
+    \item \textbf{Desenfileirar (\texttt{dequeue}):} Extrai o nó localizado no início da estrutura, reatribui a cabeça da fila ao nó subsequente e realiza a correta liberação da memória do nó removido, evitando vazamentos.
+    \item \textbf{Verificar Vazia:} Avalia o ponteiro \texttt{inicio} para determinar se a fila contém ao menos um paciente aguardando, utilizada nas validações antes de operações de remoção e exibição.
+    \item \textbf{Obter Tamanho:} Realiza uma iteração linear sobre os nós para contabilizar a quantidade de pacientes em espera, oferecendo um indicador quantitativo do estado atual da recepção.
+    \item \textbf{Varredura (Exibição):} Rotina de iteração linear que percorre o encadeamento a partir da cabeça até o fim da lista, utilizada primordialmente para o monitoramento do estado geral da fila de espera em tempo de execução e para a montagem do painel lateral do totem.
+\end{itemize}
+
+
+\section{Organização das Classes e Módulos}
+\label{sec:organizacao_classes}
+A arquitetura do projeto adota uma abordagem modular baseada no particionamento do escopo operacional entre três arquivos distintos: \texttt{main.c}, \texttt{estrutura/lista.h} e \texttt{estrutura/lista.c}. Tal organização garante clareza semântica, encapsulamento das responsabilidades e facilita a manutenção futura do simulador, atendendo à estrutura obrigatória exigida pela disciplina.
+
+\subsection{Responsabilidade}
+O projeto baseia-se na separação rigorosa entre a Lógica de Interface e a Lógica de Negócios. O arquivo \texttt{main.c} atua exclusivamente como a Interface Homem-Máquina (IHM) do totem hospitalar. Suas atribuições envolvem a renderização dos layouts no terminal, o tratamento e validação das entradas do usuário e a formatação das mensagens de saída. Em contrapartida, toda a manipulação de ponteiros, regras de inserção ordenada e gerenciamento de alocação dinâmica de memória encontra-se isolada no arquivo de implementação \texttt{lista.c}, enquanto o cabeçalho \texttt{lista.h} expõe apenas o contrato público da estrutura --- tipos e protótipos de funções --- conferindo alto grau de encapsulamento à solução.
+
+\subsection{Estrutura}
+O arquivo \texttt{lista.h} declara as estruturas fundamentais do sistema: o \texttt{No} (representando cada paciente enfileirado com seus respectivos ponteiros bidirecionais) e a \texttt{Fila} (mantendo as referências de início e fim da estrutura). Adicionalmente, define constantes simbólicas (\texttt{PRIORIDADE\_EMERGENCIA}, \texttt{PRIORIDADE\_PREFERENCIAL} e \texttt{PRIORIDADE\_COMUM}) que abstraem os valores numéricos das prioridades em identificadores legíveis ao longo do código.
+
+Para otimizar a interface visual que exibe lado a lado o Menu e o status da Fila, construiu-se no \texttt{main.c} uma estrutura local de apoio denominada \texttt{LinhaFila}. Esta estrutura permite processar previamente o panorama da fila real, armazenando os resultados como cadeias de caracteres já formatadas e liberando o fluxo principal de renderização para focar exclusivamente no traçado das bordas e do alinhamento das duas colunas do \textit{dashboard} textual.
+
+\subsection{Modelo}
+As entidades de negócio que trafegam pelo sistema repousam na estrutura \texttt{No}, definida em \texttt{lista.h}. Este modelo agrupa intrinsecamente as características de um registro clínico básico, comportando o \texttt{nome} (cadeia de caracteres com capacidade de até 49 caracteres mais o terminador nulo) e a respectiva classificação de \texttt{prioridade} (Emergência, Preferencial ou Comum). O encadeamento entre os pacientes é viabilizado pelos campos de ponteiro \texttt{prox} e \texttt{ant}, que constituem o esqueleto da Lista Duplamente Encadeada. O código-fonte do \texttt{main.c} apropria-se dessas definições para rotear a visualização, a leitura de dados e os comportamentos exibidos na tela do totem.
+
+\subsection{Principal}
+A função \texttt{main} atua como o controlador de estado central, orquestrando o ciclo de vida do simulador. Na sua execução, realiza a instanciação da \texttt{Fila} em memória local, invoca \texttt{iniciarFila} para zerar seus ponteiros e adentra um \textit{loop} contínuo condicional do tipo \texttt{do-while}. Através de blocos de decisão do tipo \texttt{switch-case}, o programa intercepta a ação escolhida pelo usuário e aciona a respectiva sub-rotina visual: \texttt{cadastrarPaciente}, \texttt{chamarProximo}, \texttt{verFrente}, \texttt{verFilaCompleta}, \texttt{verTamanho} ou \texttt{verificarVazia}. Este ciclo se repete estabilizando a operação do totem hospitalar até que o usuário acione o comando de encerramento (opção 0), momento em que a função \texttt{liberarFila} é invocada para devolver ao sistema operacional toda a memória alocada dinamicamente durante a sessão.
+
+
+\section{Funcionamento do Sistema}
+\label{sec:funcionamento_sistema}
+
+\subsection{Classes}
+A implementação prática contempla duas estruturas fundamentais declaradas em \texttt{lista.h}. A primeira, \texttt{No}, encapsula um paciente individual e seus vínculos de encadeamento, contendo os campos \texttt{nome}, \texttt{prioridade}, \texttt{prox} e \texttt{ant}. A segunda, \texttt{Fila}, exerce o papel de controlador da estrutura, mantendo apenas as referências ao primeiro e último nó cadastrados. Esta abordagem minimalista evita a redundância de informações e centraliza a complexidade nas operações que manipulam a estrutura.
+
+\subsection{Operações disponíveis no totem}
+Ao iniciar a execução, o usuário é apresentado ao painel principal do totem, que oferece sete opções de interação organizadas em um menu numerado:
+\begin{itemize}
+    \item \textbf{[1] Cadastrar entrada na fila:} solicita o nível de prioridade clínica e o nome do paciente, em seguida insere o registro na posição apropriada da fila ordenada.
+    \item \textbf{[2] Chamar próximo paciente:} remove o paciente da frente da fila, exibe seus dados em destaque e libera a memória do nó removido.
+    \item \textbf{[3] Visualizar paciente da frente:} consulta sem remoção o próximo paciente a ser chamado, útil para conferência prévia.
+    \item \textbf{[4] Visualizar fila completa:} apresenta a listagem detalhada de todos os pacientes em espera, na ordem em que serão atendidos.
+    \item \textbf{[5] Total de pacientes aguardando:} exibe a quantidade numérica de fichas ativas na fila no momento da consulta.
+    \item \textbf{[6] Verificar se a fila está vazia:} retorna indicação textual sobre o estado da fila, auxiliando em decisões operacionais.
+    \item \textbf{[0] Encerrar sessão do totem:} libera todos os recursos de memória e finaliza a execução do programa.
+\end{itemize}
+
+\subsection{Saídas do Sistema}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{images/image.png}
+    \caption{Tela inicial}
+    \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{images/image (1).png}
+    \caption{Opções de atendimento}
+    \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{images/image (2).png}
+    \caption{Inserir paciente}
+    \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{images/image (3).png}
+    \caption{Confirmação do cadastro do paciente}
+    \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{images/image (4).png}
+    \caption{Painel lateral atualizado com os pacientes da fila}
+    \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{images/image (5).png}
+    \caption{Chamando próximo paciente na fila}
+    \label{fig:placeholder}
+\end{figure}
+
+\section{Conclusão}
+\label{sec:conclusao}
+
+O desenvolvimento do simulador \textit{MediCore Centro Clínico} proporcionou à equipe uma vivência técnica crucial na modelagem de sistemas estruturados em linguagem C. A construção do ciclo de eventos (\textit{loop} principal do menu), somada à engenharia da interface baseada em caracteres ASCII com renderização em duas colunas simultâneas, exigiu um controle rigoroso sobre a captura de dados, a sanitização de entradas e o manejo dos \textit{buffers} de leitura do terminal. Evidenciou-se a extrema importância do encapsulamento ao abstrair as operações da Fila do núcleo visual: caso ocorra qualquer reescrita drástica na complexidade dos algoritmos de inserção no \textit{backend} (\texttt{lista.c}), a usabilidade e a estabilidade visual da recepção do totem manter-se-ão íntegras, desde que o contrato declarado em \texttt{lista.h} seja respeitado.
+
+Do ponto de vista sistêmico, a decisão de construir uma fundação projetada para atuar como uma Fila baseada em ponteiros e não em arranjos engessados justifica-se perfeitamente em um cenário clínico de triagem. A capacidade de isolar os atributos de prioridade do paciente dentro de uma estrutura escalável, somada à característica bidirecional da Lista Duplamente Encadeada, propicia que os algoritmos executem ordenações intrincadas sem sobrecarregar a gestão de memória ou corromper a fidelidade das requisições originais que entram pelo terminal. A escolha por concentrar a complexidade no momento da inserção (\textit{O(n)}) em troca de uma remoção trivial (\textit{O(1)}) revelou-se acertada, dado que cada chamada de paciente ocorre em tempo constante, característica desejável em um ambiente hospitalar real.
+
+Em suma, a implementação atual cumpre integralmente com os parâmetros delineados para a etapa primária do projeto, oferecendo um sistema responsivo, legível e altamente interativo no terminal, simulando de maneira realista a operação de um totem assistencial. Como trabalhos de aprimoramento futuros, o esforço da equipe poderá concentrar-se na incorporação de regras de negócio adicionais à etapa de triagem, na persistência dos atendimentos em arquivo para fins de auditoria e, potencialmente, no acoplamento de metodologias consolidadas no mercado de saúde, como o \textit{Protocolo de Manchester} de avaliação de risco em triagem hospitalar, ampliando assim a fidelidade do simulador ao cenário clínico real.
+
+\end{document}
